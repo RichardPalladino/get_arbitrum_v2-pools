@@ -139,6 +139,9 @@ def main() -> None:
                 "0x4AfA03ED8ca5972404b6bDC16Bea62b77Cf9571b"
             ):
                 pairs[tmp_lp_address] = get_pool_data(tmp_lp_address)
+            #####
+            # Check for errors with either LP, token0 or token1
+            #####
             if (pairs[tmp_lp_address] is None) or (pairs[tmp_lp_address] == False):
                 pairs[tmp_lp_address] = False
                 print(f"LP {tmp_lp_address} is invalid")
@@ -251,16 +254,18 @@ def main() -> None:
                         factory_lps[factory_address].append(tmp_lp_address)
         # Close-out processing of the DEX / factory set
         print(f"{factory_name} currently has {num_pools} liquidity pools")
-        # Output the current state of the pairs and LP list dictionaries
-        tmp_json = json.dumps(pairs, indent=3)
-        with open("lp_dictionary.json", "w") as f_out:
-            f_out.write(tmp_json)
-        tmp_json = json.dumps(factory_lps, indent=3)
-        with open("lps_per_dex.json", "w") as f_out:
-            f_out.write(tmp_json)
-        tmp_json = json.dumps(bogus_addresses, indent=3)
-        with open("invalid_addresses.json", "w") as f_out:
-            f_out.write(tmp_json)
+
+    tmp_json = json.dumps(factory_lps, indent=3)
+    with open("reports/lps_per_dex.json", "w") as f_out:
+        f_out.write(tmp_json)
+
+    # Output the current state of the pairs and LP list dictionaries
+    tmp_json = json.dumps(pairs, indent=3)
+    with open("reports/lp_dictionary.json", "w") as f_out:
+        f_out.write(tmp_json)
+    tmp_json = json.dumps(bogus_addresses, indent=3)
+    with open("reports/invalid_addresses.json", "w") as f_out:
+        f_out.write(tmp_json)
 
     end_time = perf_counter()
     total_time = (end_time - start_time) / 60
