@@ -6,6 +6,9 @@ interface IUniswapV2Pair {
 
     function name() external pure returns (string memory);
     function symbol() external pure returns (string memory);
+    function stable() external pure returns (bool);
+    function isStable() external pure returns (bool);
+    function stableSwap() external pure returns (bool);
     function decimals() external pure returns (uint8);
     function totalSupply() external view returns (uint);
     function balanceOf(address owner) external view returns (uint);

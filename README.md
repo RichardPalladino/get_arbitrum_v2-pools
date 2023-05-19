@@ -16,3 +16,20 @@ Some LPs are void - maybe they are empty / have little reserves or give another 
 
 I may describe my code here later.
 
+### Development notes:
+* Removed Stargate from the set of DEXs because, even though their factory used to be compatible with UniswapV2, their LPs definitely are not and their factory recently resulted in reversions.
+* Arbitrum Exchange has the following code for determining if deposit plus fees >= K 
+''' 
+ { // scope for reserve{0,1}Adjusted, avoids stack too deep errors
+            uint _swapFee = swapFee;
+            uint balance0Adjusted = (balance0.mul(10000).sub(amount0In.mul(_swapFee)));
+            uint balance1Adjusted = (balance1.mul(10000).sub(amount1In.mul(_swapFee)));
+            require(balance0Adjusted.mul(balance1Adjusted) >= uint(_reserve0).mul(_reserve1).mul(10000**2), 'ArbDex K');
+        }
+'''
+    The 'mul(10000**2)' may be an issue.  Though it seems like this works out with both balances being adjusted.
+* Added Auragi (another Solidly fork) -- https://docs.auragi.finance/auragi-finance/
+* Added MIND Games DEX, a small V2 fork -- https://docs.mindgames.io/about/contracts
+* Added MagicSwap because the pools seem inbalanced (even though it's only got 3 pools) - https://docs.treasure.lol/references/contracts
+* Added Swapr, which has some pools with > $2000 liquidity - https://swapr.gitbook.io/swapr/contracts
+* Added Swapfish, which has even fewer pools with > $2000 in liquidity - https://docs.swapfish.fi/security/contracts

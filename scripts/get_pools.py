@@ -8,6 +8,7 @@ LOCAL_BLOCKCHAIN_FORKS = ["mainnet-fork", "mainnet-fork-dev"]
 LOCAL_BLOCKCHAINS = LOCAL_BLOCKCHAIN_FORKS + ["development", "ganache-local", "hardhat"]
 
 bogus_addresses = []
+# solidly_forks = {}  # factory -> isStable, stableSwap bools
 
 
 def serialize_sets(obj):  # so JSON can handle sets
@@ -17,38 +18,68 @@ def serialize_sets(obj):  # so JSON can handle sets
     return obj
 
 
-def get_num_deployed() -> dict:
+def get_deployed_factory() -> dict:
+    global bogus_addresses
     factories = {}
     active_network = network.show_active()
-    for dex, address in config["networks"][active_network]["factories"].items():
+    for dex, values in config["networks"][active_network]["markets"].items():
+        print(f"{dex} has {str(values)} values")
         try:
-            factory = interface.IUniswapV2Factory(address)
+            factory = interface.IUniswapV2Factory(values["factory"])
+            factories[values["factory"]] = {
+                "length": factory.allPairsLength(),
+                "solidly": values["solidly"],
+            }
+            if values["solidly"]:
+                factories[values["factory"]]["stableSwap"] = values["stableSwap"]
         except Exception as err:
             print(
                 f'Function "get_num_deployed" failed on {active_network} network {dex} factory, with the following error:\n{err}'
             )
             bogus_addresses.append(
                 {
-                    "factory": str(address),
-                    "reason": f'interface.IUniswapV2Factory failure on {str(active_network)} with {str(dex)} factory and error "{err}"',
+                    "factory": str(values["factory"]),
+                    "reason": f'interface.IUniswapV2Factory failure on {str(active_network)} with {values["factory"]} factory and error "{err}"',
                 }
             )
-        factories[dex] = factory.allPairsLength()
 
     return factories
 
 
-def get_pool_data(_address: str) -> dict:
+def get_pool_data(_address: str, _factory_data: dict) -> dict:
     result = None
     try:
         _pool = interface.IUniswapV2Pair(_address)
         tmp_token0_address = _pool.token0()
         tmp_token1_address = _pool.token1()
-        result = {
-            "lp_address": _address,
-            "tokens": [tmp_token0_address, tmp_token1_address],
-            "reserves": _pool.getReserves(),
-        }
+        if _factory_data["solidly"]:
+            if _factory_data["stableSwap"]:
+                if _pool.stableSwap():
+                    result = False
+                    print(f"{_address} is Solidly stable LP")
+                else:
+                    result = {
+                        "lp_address": _address,
+                        "tokens": [tmp_token0_address, tmp_token1_address],
+                        "reserves": _pool.getReserves(),
+                    }
+            else:
+                if _pool.stable():
+                    result = False
+                    print(f"{_address} is Solidly stable LP")
+                else:
+                    result = {
+                        "lp_address": _address,
+                        "tokens": [tmp_token0_address, tmp_token1_address],
+                        "reserves": _pool.getReserves(),
+                    }
+
+        else:
+            result = {
+                "lp_address": _address,
+                "tokens": [tmp_token0_address, tmp_token1_address],
+                "reserves": _pool.getReserves(),
+            }
     except Exception as err:
         print(
             f'Received the following error when querying blockchain using "get_pool_data()" for {_address}:\n  {err}'
@@ -89,42 +120,43 @@ def get_erc20_data(_address: str) -> dict:
 
 
 def main() -> None:
+    global bogus_addresses
     start_time = perf_counter()
     factory_lps = {}
     pairs = {}
     erc_20s = {}
-    factories = get_num_deployed()
+    factories = get_deployed_factory()
     active_network = network.show_active()
 
-    for factory_name, num_pools in factories.items():
+    print(factories)
+
+    for factory_address in factories.keys():
         try:
-            factory = interface.IUniswapV2Factory(
-                config["networks"][active_network]["factories"][factory_name]
-            )
+            factory = interface.IUniswapV2Factory(factory_address)
         except Exception as err:
             print(
-                f'"IUniswapV2Factory" failed on {active_network} network {factory_name} factory, with the following error:\n{err}'
+                f'"IUniswapV2Factory" failed on {active_network} network {factory} factory, with the following error:\n{err}'
             )
             bogus_addresses.append(
                 {
-                    "factory": str(factory_name),
+                    "factory": str(factory),
                     "reason": f"interface.IUniswapV2Factory error on {str(active_network)}: {err}",
                 }
             )
             continue
-        factory_address = str(factory.address)
         factory_lps[factory_address] = []
+        num_pools = factories[factory_address]["length"]
         # Loop through each LP listed in the Factory
         for i in range(0, num_pools):
             try:
                 tmp_lp_address = factory.allPairs(i)
             except Exception as err:
                 print(
-                    f"Received the following error when querying {factory} allPairs() at index {i}:\n  {err}"
+                    f"Received the following error when querying {factory_address} allPairs() at index {i}:\n  {err}"
                 )
                 bogus_addresses.append(
                     {
-                        "factory": str(factory),
+                        "factory": str(factory_address),
                         "index": str(i),
                         "reason": f'Error querying "factory.allpairs()": {err}',
                     }
@@ -138,7 +170,9 @@ def main() -> None:
             if tmp_lp_address != to_address(
                 "0x4AfA03ED8ca5972404b6bDC16Bea62b77Cf9571b"
             ):
-                pairs[tmp_lp_address] = get_pool_data(tmp_lp_address)
+                pairs[tmp_lp_address] = get_pool_data(
+                    tmp_lp_address, factories[factory_address]
+                )
             #####
             # Check for errors with either LP, token0 or token1
             #####
@@ -165,6 +199,31 @@ def main() -> None:
                             "address": token0_address,
                             **erc_20s[token0_address],
                         }
+                    else:
+                        # try again?
+                        tmp_token = get_erc20_data(token0_address)
+                        # If querying the blockchain returns None for the pool, there was an error
+                        if (tmp_token is None) or (tmp_token == False):
+                            erc_20s[token0_address] = False
+                            pairs[tmp_lp_address] = False
+                            print(
+                                f"{tmp_lp_address} is invalid because {token0_address} was tracked as False and returned None again"
+                            )
+                            bogus_addresses.append(
+                                {
+                                    "invalid_erc20": str(token0_address),
+                                    "lp_address": str(tmp_lp_address),
+                                    "dex_factory": str(factory_address),
+                                }
+                            )
+                            continue
+                        else:
+                            erc_20s[token0_address] = tmp_token
+                            pairs[tmp_lp_address]["token0"] = {
+                                "address": token0_address,
+                                **tmp_token,
+                            }
+
                 else:
                     # If we haven't already populated the pool data, query the blockchain to get it
                     tmp_token = get_erc20_data(token0_address)
@@ -172,6 +231,9 @@ def main() -> None:
                     if (tmp_token is None) or (tmp_token == False):
                         erc_20s[token0_address] = False
                         pairs[tmp_lp_address] = False
+                        print(
+                            f"{tmp_lp_address} is invalid because {token0_address} returned none or False"
+                        )
                         bogus_addresses.append(
                             {
                                 "invalid_erc20": str(token0_address),
@@ -196,11 +258,40 @@ def main() -> None:
                                 "address": token1_address,
                                 **erc_20s[token1_address],
                             }
+                        else:
+                            # if the token is False, the entire pool is false, right?
+                            # try again
+                            tmp_token = get_erc20_data(token1_address)
+                            if (tmp_token is None) or (tmp_token == False):
+                                erc_20s[token1_address] = False
+                                pairs[tmp_lp_address] = False
+                                print(
+                                    f"{tmp_lp_address} invalid because {token1_address} is tracked as False and returned None"
+                                )
+                                bogus_addresses.append(
+                                    {
+                                        "invalid_erc20": str(token1_address),
+                                        "lp_address": str(tmp_lp_address),
+                                        "dex_factory": str(factory_address),
+                                    }
+                                )
+
+                                continue
+                            else:
+                                erc_20s[token1_address] = tmp_token
+                                pairs[tmp_lp_address]["token1"] = {
+                                    "address": token1_address,
+                                    **tmp_token,
+                                }
+
                     else:
                         tmp_token = get_erc20_data(token1_address)
                         if (tmp_token is None) or (tmp_token == False):
                             erc_20s[token1_address] = False
                             pairs[tmp_lp_address] = False
+                            print(
+                                f"{tmp_lp_address} is invalid because {token1_address} returned none or False"
+                            )
                             bogus_addresses.append(
                                 {
                                     "invalid_erc20": str(token1_address),
@@ -208,6 +299,7 @@ def main() -> None:
                                     "dex_factory": str(factory_address),
                                 }
                             )
+
                             continue
                         else:
                             erc_20s[token1_address] = tmp_token
@@ -253,7 +345,7 @@ def main() -> None:
                     else:
                         factory_lps[factory_address].append(tmp_lp_address)
         # Close-out processing of the DEX / factory set
-        print(f"{factory_name} currently has {num_pools} liquidity pools")
+        print(f"{factory_address} currently has {num_pools} liquidity pools")
 
     tmp_json = json.dumps(factory_lps, indent=3)
     with open("reports/lps_per_dex.json", "w") as f_out:
