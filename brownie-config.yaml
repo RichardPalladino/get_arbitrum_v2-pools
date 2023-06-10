@@ -35,7 +35,7 @@ networks:
       zyber_swap: 
         factory: "0xaC2ee06A14c52570Ef3B9812Ed240BCe359772e7"
         solidly: false
-        max_fee: 0.0025
+        fee_type: 2
         router: "0x16e71B13fE6079B4312063F7E81F76d165Ad32Ad"
       trader_joe_v1: 
         factory: "0xaE4EC9901c3076D0DdBe76A520F9E90a6227aCB7"
@@ -46,73 +46,84 @@ networks:
       meerkat_finance: 
         factory: "0xfe3699303D3Eb460638e8aDA2bf1cFf092C33F22"
         solidly: false
-        max_fee: 0.002
+        fee_type: 2
         router: "0x4F879a9d95e01041dDAA607A65F04e0EDbD04139"
       solid_lizard: 
         factory: "0x734d84631f00dC0d3FCD18b04b6cf42BFd407074"
         solidly: true
         stableSwap: false
-        max_fee: 0.006
+        fee_type: 4
         router:  "0xF26515D5482e2C2FD237149bF6A653dA4794b3D0"
       3xcalibur: 
         factory: "0xD158bd9E8b6efd3ca76830B66715Aa2b7Bad2218"
         solidly: true
         stableSwap: false
-        max_fee: 0.00369
+        fee_type: 5
         router: ""
       sterling_finance: 
         factory: "0xF7A23B9A9dCB8d0aff67012565C5844C20C11AFC"
         solidly: true
         stableSwap: false
-        max_fee: 0.002
+        fee_type: 6
         router: "0x0cBD3aEa90538a1Cf3C60B05582b691f6d2b2B01"
       alien_fi: 
         factory: "0xac9d019B7c8B7a4bbAC64b2Dbf6791ED672ba98B"
         solidly: false
+        fee_type: 0
         max_fee: 0.0025
         router: ""
       oreo_swap: 
         factory: "0x20fAfD2B0Ba599416D75Eb54f48cda9812964f46"
         solidly: false
-        max_fee: 0.003
+        fee_type: 0
+        max_fee: 0.0025
         router: "0x38eEd6a71A4ddA9d7f776946e3cfa4ec43781AE6"
       arb_swap: 
         factory: "0xd394E9CC20f43d2651293756F8D320668E850F1b"
         solidly: false
+        fee_type: 0
         max_fee: 0.003
         router: "0xD01319f4b65b79124549dE409D36F25e04B3e551"
       chronos:
         factory: "0xCe9240869391928253Ed9cc9Bcb8cb98CB5B0722"
         solidly: true
         stableSwap: false
-        max_fee: 0.0
+        fee_type: 7
         router: ""
       auragi:
         factory: "0xa36b55DBe8e83Eb69C686368cF93ABC8A238CC5f"
         solidly: true
         stableswap: false
-        max_fee: 0.001
+        fee_type: 2
         router: "0x0FaE1e44655ab06825966a8fCE87b9e988AB6170"
       mindgames:
         factory: "0x7C7F1c8E2b38d4C06218565BC4C9D8231b0628c0"
         solidly: false
+        fee_type: 0
         max_fee: 0.003
         router: "0x750eD5cF0f5278be9C6562399f0791dD221C4f83"
       magicswap:
         factory: "0x015e379Ce0Ff195228b3A9eBDFA13F9afC155Dd7"
         solidly: false
+        fee_type: 0
         max_fee: 0.003
         router: "0x23805449f91bB2d2054D9Ba288FdC8f09B5eAc79"
       swapr:
         factory: "0x359F20Ad0F42D75a5077e65F30274cABe6f4F01a"
         solidly: false
-        max_fee: 0.0025
+        fee_type: 2
         router: "0x530476d5583724A89c8841eB6Da76E7Af4C0F17E"
       swapfish:
         factory: "0x71539D09D3890195dDa87A6198B98B75211b72F3"
         solidly: false
-        max_fee: 0.002
+        fee_type: 2
         router: "0xcDAeC65495Fa5c0545c5a405224214e3594f30d8"
+      # Dex swap requires the call comes from an allow list of contracts -- most likely want to keep it all internal
+      # dex_swap
+      #   factory: "0x3E40739d8478c58f9B973266974C58998D4F9e8b"
+      #   solidly: False
+      #   fee_type: 2
+
       # usd_contracts:
       #   usdc:
       #     address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
